@@ -1,6 +1,6 @@
 package com.example.AddressBookManagement.services;
 
-import com.example.AddressBookManagement.dto.AddressDTO;
+import com.example.AddressBookManagement.DTO.AddressDTO;
 import com.example.AddressBookManagement.model.Address;
 import com.example.AddressBookManagement.repository.AddressRepository;
 import com.example.AddressBookManagement.interfaces.AddressService;

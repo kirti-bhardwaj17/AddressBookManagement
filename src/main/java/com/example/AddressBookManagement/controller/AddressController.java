@@ -1,9 +1,8 @@
 package com.example.AddressBookManagement.controller;
 
-import com.example.AddressBookManagement.dto.AddressDTO;
+import com.example.AddressBookManagement.DTO.AddressDTO;
 import com.example.AddressBookManagement.model.Address;
 import com.example.AddressBookManagement.interfaces.AddressService;
-import com.example.AddressBookManagement.services.AddressServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

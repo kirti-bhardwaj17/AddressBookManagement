@@ -1,6 +1,6 @@
 package com.example.AddressBookManagement.interfaces;
 
-import com.example.AddressBookManagement.dto.AddressDTO;
+import com.example.AddressBookManagement.DTO.AddressDTO;
 import com.example.AddressBookManagement.model.Address;
 import java.util.List;
 import java.util.Optional;

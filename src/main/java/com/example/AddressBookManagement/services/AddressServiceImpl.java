@@ -27,7 +27,11 @@ public class AddressServiceImpl implements AddressService {
     @Override
     public Optional<Address> getAddressById(Long id) {
         log.info("Fetching address with ID: {}", id);
-        return addressRepository.findById(id);
+        return addressRepository.findById(id)
+                .or(() -> {
+                    log.warn("Address with ID {} not found", id);
+                    throw new RuntimeException("Address not found");
+                });
     }
 
     @Override
@@ -40,18 +44,27 @@ public class AddressServiceImpl implements AddressService {
     @Override
     public Address updateAddress(Long id, AddressDTO addressDTO) {
         log.info("Updating address with ID: {}", id);
-        return addressRepository.findById(id).map(address -> {
-            address.setName(addressDTO.getName());
-            address.setPhone(addressDTO.getPhone());
-            address.setEmail(addressDTO.getEmail());
-            address.setCity(addressDTO.getCity());
-            return addressRepository.save(address);
-        }).orElse(null);
+        return addressRepository.findById(id)
+                .map(address -> {
+                    address.setName(addressDTO.getName());
+                    address.setPhone(addressDTO.getPhone());
+                    address.setEmail(addressDTO.getEmail());
+                    address.setCity(addressDTO.getCity());
+                    return addressRepository.save(address);
+                })
+                .orElseThrow(() -> {
+                    log.error("Update failed: Address with ID {} not found", id);
+                    return new RuntimeException("Address not found");
+                });
     }
 
     @Override
     public void deleteAddress(Long id) {
         log.info("Deleting address with ID: {}", id);
+        if (!addressRepository.existsById(id)) {
+            log.error("Delete failed: Address with ID {} not found", id);
+            throw new RuntimeException("Address not found");
+        }
         addressRepository.deleteById(id);
     }
 }

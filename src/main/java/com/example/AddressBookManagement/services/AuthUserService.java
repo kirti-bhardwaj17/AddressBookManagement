@@ -6,9 +6,14 @@ import com.example.AddressBookManagement.DTO.ResetPasswordDTO;
 import com.example.AddressBookManagement.model.AuthUser;
 import com.example.AddressBookManagement.repository.AuthUserRepository;
 import com.example.AddressBookManagement.Utils.JwtUtil;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.Date;
 import java.util.Optional;
 
@@ -18,13 +23,13 @@ public class AuthUserService {
     private final AuthUserRepository authUserRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-    private final EmailService emailService;
+    private final JavaMailSender mailSender;
 
-    public AuthUserService(AuthUserRepository authUserRepository, JwtUtil jwtUtil, EmailService emailService) {
+    public AuthUserService(AuthUserRepository authUserRepository, JwtUtil jwtUtil, JavaMailSender mailSender) {
         this.authUserRepository = authUserRepository;
         this.passwordEncoder = new BCryptPasswordEncoder();
         this.jwtUtil = jwtUtil;
-        this.emailService = emailService;
+        this.mailSender = mailSender;
     }
 
     @Transactional
@@ -41,9 +46,7 @@ public class AuthUserService {
 
         authUserRepository.save(user);
 
-        String subject = "Welcome to Our Website!";
-        String message = "Hello " + user.getFirstName() + ",<br>Thank you for registering!";
-        emailService.sendEmail(user.getEmail(), subject, message);
+        sendEmail(user.getEmail(), "Welcome!", "Thank you for registering!");
 
         return "User registered successfully!";
     }
@@ -62,7 +65,6 @@ public class AuthUserService {
 
         String token = jwtUtil.generateToken(user.getEmail());
 
-        // ✅ Store Token in Database
         user.setJwtToken(token);
         authUserRepository.save(user);
 
@@ -84,8 +86,7 @@ public class AuthUserService {
         user.setTokenExpiry(new Date(System.currentTimeMillis() + 15 * 60 * 1000));
         authUserRepository.save(user);
 
-        emailService.sendEmail(email, "Reset Password",
-                "Click the link to reset password: <a href='http://localhost:8080/auth/reset-password?token=" + token + "'>Reset Password</a>");
+        sendEmail(email, "Reset Password", "Your reset token is: " + token);
 
         return "Password reset token sent to: " + email;
     }
@@ -110,5 +111,19 @@ public class AuthUserService {
         authUserRepository.save(user);
 
         return "Password reset successfully!";
+    }
+
+    private void sendEmail(String to, String subject, String text) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(text, true);
+            helper.setFrom("your-email@gmail.com");
+            mailSender.send(message);
+        } catch (MessagingException e) {
+            throw new RuntimeException("Error sending email", e);
+        }
     }
 }

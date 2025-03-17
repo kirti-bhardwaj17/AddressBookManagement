@@ -1,6 +1,5 @@
 package com.example.AddressBookManagement.services;
 
-
 import com.example.AddressBookManagement.DTO.AuthUserDTO;
 import com.example.AddressBookManagement.DTO.LoginDTO;
 import com.example.AddressBookManagement.DTO.ResetPasswordDTO;
@@ -10,7 +9,7 @@ import com.example.AddressBookManagement.Utils.JwtUtil;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.util.Date;
 import java.util.Optional;
 
 @Service
@@ -42,7 +41,6 @@ public class AuthUserService {
 
         authUserRepository.save(user);
 
-        // 📧 Send Welcome Email
         String subject = "Welcome to Our Website!";
         String message = "Hello " + user.getFirstName() + ",<br>Thank you for registering!";
         emailService.sendEmail(user.getEmail(), subject, message);
@@ -62,32 +60,17 @@ public class AuthUserService {
             throw new IllegalArgumentException("Invalid email or password!");
         }
 
-        return jwtUtil.generateToken(user.getEmail());
-    }
+        String token = jwtUtil.generateToken(user.getEmail());
 
-    @Transactional
-    public String forgotPassword(String email, String newPassword) {
-        Optional<AuthUser> userOptional = authUserRepository.findByEmail(email);
-
-        if (userOptional.isEmpty()) {
-            throw new IllegalArgumentException("Sorry! We cannot find the user email: " + email);
-        }
-
-        AuthUser user = userOptional.get();
-        user.setPassword(passwordEncoder.encode(newPassword)); // Hash new password
+        // ✅ Store Token in Database
+        user.setJwtToken(token);
         authUserRepository.save(user);
 
-        // 📧 Send Confirmation Email
-        String subject = "Password Reset Successful";
-        String message = "Your password has been successfully reset.";
-        emailService.sendEmail(user.getEmail(), subject, message);
-
-        return "Password has been changed successfully!";
+        return token;
     }
 
-
     @Transactional
-    public String resetPassword(String email, ResetPasswordDTO resetPasswordDTO) {
+    public String forgotPassword(String email) {
         Optional<AuthUser> userOptional = authUserRepository.findByEmail(email);
 
         if (userOptional.isEmpty()) {
@@ -95,17 +78,37 @@ public class AuthUserService {
         }
 
         AuthUser user = userOptional.get();
+        String token = jwtUtil.generateToken(email);
 
-        // Validate current password
-        if (!passwordEncoder.matches(resetPasswordDTO.getCurrentPassword(), user.getPassword())) {
-            throw new IllegalArgumentException("Current password is incorrect!");
+        user.setResetToken(token);
+        user.setTokenExpiry(new Date(System.currentTimeMillis() + 15 * 60 * 1000));
+        authUserRepository.save(user);
+
+        emailService.sendEmail(email, "Reset Password",
+                "Click the link to reset password: <a href='http://localhost:8080/auth/reset-password?token=" + token + "'>Reset Password</a>");
+
+        return "Password reset token sent to: " + email;
+    }
+
+    @Transactional
+    public String resetPassword(String token, ResetPasswordDTO resetPasswordDTO) {
+        Optional<AuthUser> userOptional = authUserRepository.findByEmail(jwtUtil.extractEmail(token));
+
+        if (userOptional.isEmpty()) {
+            throw new IllegalArgumentException("Invalid or expired token");
         }
 
-        // Update new password
+        AuthUser user = userOptional.get();
+
+        if (user.getTokenExpiry().before(new Date())) {
+            throw new IllegalArgumentException("Token expired! Request a new reset token.");
+        }
+
         user.setPassword(passwordEncoder.encode(resetPasswordDTO.getNewPassword()));
+        user.setResetToken(null);
+        user.setTokenExpiry(null);
         authUserRepository.save(user);
 
         return "Password reset successfully!";
     }
 }
-

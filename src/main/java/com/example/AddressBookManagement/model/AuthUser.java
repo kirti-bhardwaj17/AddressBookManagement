@@ -3,7 +3,6 @@ package com.example.AddressBookManagement.model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
-
 import java.util.Date;
 
 @Entity
@@ -35,8 +34,10 @@ public class AuthUser {
     @Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
 
-    @Column(length = 512) // Store reset token
+    @Column(length = 512)
     private String resetToken;
 
-    private Date tokenExpiry; // Store token expiration time
+    private Date tokenExpiry;
+
+    private String jwtToken; // ✅ Store the JWT Token
 }

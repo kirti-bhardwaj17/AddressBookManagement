@@ -1,6 +1,7 @@
 package com.example.AddressBookManagement.controller;
 
 import com.example.AddressBookManagement.DTO.AddressDTO;
+import com.example.AddressBookManagement.Utils.JwtUtil;
 import com.example.AddressBookManagement.model.Address;
 import com.example.AddressBookManagement.interfaces.AddressService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,9 +24,25 @@ public class AddressController {
     @Autowired
     private AddressService addressService;
 
+    @Autowired
+    private JwtUtil jwtUtil; // ✅ Inject JWT Utility for token validation
+
+    // ✅ Check if user is authenticated before accessing any CRUD operation
+    private boolean isAuthenticated(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return false;
+        }
+        String token = authHeader.substring(7);
+        return jwtUtil.validateToken(token);
+    }
+
     @GetMapping
     @Operation(summary = "Get all addresses", description = "Fetches all addresses from the system")
-    public ResponseEntity<?> getAllAddresses() {
+    public ResponseEntity<?> getAllAddresses(@RequestHeader("Authorization") String authHeader) {
+        if (!isAuthenticated(authHeader)) {
+            return ResponseEntity.status(403).body("Unauthorized: You need to log in first!");
+        }
+
         try {
             log.info("Received request to fetch all addresses");
             return ResponseEntity.ok(addressService.getAllAddresses());
@@ -37,7 +54,11 @@ public class AddressController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get address by ID", description = "Fetches a specific address using its ID")
-    public ResponseEntity<?> getAddressById(@PathVariable Long id) {
+    public ResponseEntity<?> getAddressById(@RequestHeader("Authorization") String authHeader, @PathVariable Long id) {
+        if (!isAuthenticated(authHeader)) {
+            return ResponseEntity.status(403).body("Unauthorized: You need to log in first!");
+        }
+
         try {
             log.info("Received request to fetch address with ID: {}", id);
             Optional<Address> address = addressService.getAddressById(id);
@@ -50,7 +71,11 @@ public class AddressController {
 
     @PostMapping
     @Operation(summary = "Create a new address", description = "Stores a new address in the system")
-    public ResponseEntity<?> createAddress(@Valid @RequestBody AddressDTO addressDTO) {
+    public ResponseEntity<?> createAddress(@RequestHeader("Authorization") String authHeader, @Valid @RequestBody AddressDTO addressDTO) {
+        if (!isAuthenticated(authHeader)) {
+            return ResponseEntity.status(403).body("Unauthorized: You need to log in first!");
+        }
+
         try {
             log.info("Received request to create address: {}", addressDTO);
             return ResponseEntity.ok(addressService.createAddress(addressDTO));
@@ -62,7 +87,11 @@ public class AddressController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update an address", description = "Updates an existing address by ID")
-    public ResponseEntity<?> updateAddress(@PathVariable Long id, @Valid @RequestBody AddressDTO addressDTO) {
+    public ResponseEntity<?> updateAddress(@RequestHeader("Authorization") String authHeader, @PathVariable Long id, @Valid @RequestBody AddressDTO addressDTO) {
+        if (!isAuthenticated(authHeader)) {
+            return ResponseEntity.status(403).body("Unauthorized: You need to log in first!");
+        }
+
         try {
             log.info("Received request to update address with ID: {}", id);
             Address updatedAddress = addressService.updateAddress(id, addressDTO);
@@ -75,7 +104,11 @@ public class AddressController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete an address", description = "Deletes an existing address by ID")
-    public ResponseEntity<?> deleteAddress(@PathVariable Long id) {
+    public ResponseEntity<?> deleteAddress(@RequestHeader("Authorization") String authHeader, @PathVariable Long id) {
+        if (!isAuthenticated(authHeader)) {
+            return ResponseEntity.status(403).body("Unauthorized: You need to log in first!");
+        }
+
         try {
             log.info("Received request to delete address with ID: {}", id);
             addressService.deleteAddress(id);

@@ -42,7 +42,7 @@ public class AuthUserController {
             @Valid @RequestBody Map<String, String> requestBody) {
 
         String newPassword = requestBody.get("password");
-        String response = authUserService.forgotPassword(email, newPassword);
+        String response = authUserService.forgotPassword(email);
         return ResponseEntity.ok().body(response);
     }
 

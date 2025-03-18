@@ -32,7 +32,7 @@ public class AuthUserController {
 
     @Operation(summary = "Forgot Password")
     @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(@RequestBody LoginDTO loginDTO) {  // ✅ Accepting JSON request
+    public ResponseEntity<String> forgotPassword(@RequestBody LoginDTO loginDTO) {
         return ResponseEntity.ok(authUserService.forgotPassword(loginDTO.getEmail()));
     }
 

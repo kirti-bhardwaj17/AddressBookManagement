@@ -4,6 +4,7 @@ import com.example.AddressBookManagement.Utils.JwtUtil;
 import com.example.AddressBookManagement.model.AuthUser;
 import com.example.AddressBookManagement.repository.AuthUserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -15,55 +16,43 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Optional;
+import java.util.concurrent.ArrayBlockingQueue;
 
 @Component
-public class JwtRequestFilter extends OncePerRequestFilter {  // ✅ Extending OncePerRequestFilter
+public class JwtRequestFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
+    private final StringRedisTemplate redisTemplate;
 
-    @Autowired
-    private AuthUserRepository authUserRepository; // ✅ Inject UserRepository
-
-    @Autowired
-    private UserDetailsService userDetailsService;
+    public JwtRequestFilter(JwtUtil jwtUtil, StringRedisTemplate redisTemplate) {
+        this.jwtUtil = jwtUtil;
+        this.redisTemplate = redisTemplate;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-
         final String authorizationHeader = request.getHeader("Authorization");
 
         String token = null;
         String email = null;
 
-        // ✅ Extract JWT Token from Header
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             token = authorizationHeader.substring(7);
             email = jwtUtil.extractEmail(token);
         }
 
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            Optional<AuthUser> userOptional = authUserRepository.findByEmail(email);
+            String redisToken = redisTemplate.opsForValue().get("JWT:" + email);
 
-            if (userOptional.isPresent()) {
-                AuthUser user = userOptional.get();
-
-                // ✅ Validate Token & Check If It Matches Stored Token
-                if (jwtUtil.validateToken(token) && token.equals(user.getResetToken())) {
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-
-                    UsernamePasswordAuthenticationToken authenticationToken =
-                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-
-                    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-                } else {
-                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid or expired token");
-                    return;
-                }
+            if (redisToken != null && redisToken.equals(token) && jwtUtil.validateToken(token)) {
+                SecurityContextHolder.getContext().setAuthentication(
+                        new UsernamePasswordAuthenticationToken(email, null, new ArrayList<>())
+                );
             } else {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not found");
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid or expired token");
                 return;
             }
         }
